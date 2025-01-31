@@ -28,22 +28,25 @@ function M.get_visual_selection()
   return table.concat(lines, "\n")
 end
 
---- Sends the given prompt to the OpenAI API and returns the result text.
+--- Sends the given prompt to the OpenRouter API and returns the result text.
+--- Make sure you have your OPENROUTER_API_KEY environment variable set.
 function M.send_to_api(prompt)
-  local api_key = os.getenv("OPENAI_API_KEY")
+  local api_key = os.getenv("OPENROUTER_API_KEY")
   if not api_key then
-    print("Error: OPENAI_API_KEY environment variable not set!")
+    print("Error: OPENROUTER_API_KEY environment variable not set!")
     return nil
   end
 
+  -- Build the JSON payload. Adjust parameters as needed.
   local payload = vim.fn.json_encode({
-    model = "text-davinci-003",
+    model = "text-davinci-003",  -- Change model if desired.
     prompt = prompt,
     max_tokens = 150,
     temperature = 0.7,
   })
 
-  local url = "https://api.openai.com/v1/completions"
+  -- Use OpenRouter's API endpoint.
+  local url = "https://openrouter.ai/api/v1/completions"
   local cmd = string.format(
     "curl -sS %s -H 'Content-Type: application/json' -H 'Authorization: Bearer %s' -d '%s'",
     url,
@@ -81,6 +84,7 @@ function M.run_api_on_selection()
     return
   end
 
+  -- Split the response into lines and display them using Telescope.
   pickers.new({}, {
     prompt_title = "API Response",
     finder = finders.new_table {
@@ -92,7 +96,7 @@ end
 
 -- Dummy setup function to satisfy Lazy.nvim.
 function M.setup(opts)
-  -- You can merge configuration options from opts if needed.
+  -- Merge configuration options from opts if needed.
 end
 
 return M
