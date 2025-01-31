@@ -6,9 +6,7 @@ local finders = require("telescope.finders")
 local conf = require("telescope.config").values
 
 --- Retrieves the text from the current visual selection.
---- @return string|nil the concatenated selection or nil if nothing is selected.
 function M.get_visual_selection()
-  -- Ensure we are in a visual mode selection by checking marks '< and '>
   local start_pos = vim.fn.getpos("'<")
   local end_pos = vim.fn.getpos("'>")
   if not (start_pos and end_pos) then
@@ -17,20 +15,20 @@ function M.get_visual_selection()
   end
 
   local lines = vim.fn.getline(start_pos[2], end_pos[2])
+  if type(lines) == "string" then
+    lines = { lines }
+  end
+
   if #lines == 0 then
     return ""
   end
 
-  -- Trim the first and last line by the visual columns.
   lines[1] = string.sub(lines[1], start_pos[3])
   lines[#lines] = string.sub(lines[#lines], 1, end_pos[3])
-  return table.concat({lines})
+  return table.concat(lines, "\n")
 end
 
 --- Sends the given prompt to the OpenAI API and returns the result text.
---- Make sure you have your OPENAI_API_KEY environment variable set.
---- @param prompt string the text to send.
---- @return string|nil the API response text, or nil on error.
 function M.send_to_api(prompt)
   local api_key = os.getenv("OPENAI_API_KEY")
   if not api_key then
@@ -38,15 +36,13 @@ function M.send_to_api(prompt)
     return nil
   end
 
-  -- Build the JSON payload.
   local payload = vim.fn.json_encode({
-    model = "text-davinci-003",  -- You can change the model if needed.
+    model = "text-davinci-003",
     prompt = prompt,
     max_tokens = 150,
     temperature = 0.7,
   })
 
-  -- If you prefer using Ollama, swap out the endpoint and payload as needed.
   local url = "https://api.openai.com/v1/completions"
   local cmd = string.format(
     "curl -sS %s -H 'Content-Type: application/json' -H 'Authorization: Bearer %s' -d '%s'",
@@ -85,7 +81,6 @@ function M.run_api_on_selection()
     return
   end
 
-  -- Split the response into lines and display them using Telescope.
   pickers.new({}, {
     prompt_title = "API Response",
     finder = finders.new_table {
@@ -93,6 +88,11 @@ function M.run_api_on_selection()
     },
     sorter = conf.generic_sorter({}),
   }):find()
+end
+
+-- Dummy setup function to satisfy Lazy.nvim.
+function M.setup(opts)
+  -- You can merge configuration options from opts if needed.
 end
 
 return M
