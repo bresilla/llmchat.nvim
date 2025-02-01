@@ -1,13 +1,9 @@
 -- File: lua/my_telescope_plugin.lua
 local M = {}
 
-
-local pickers = require("telescope.pickers")
-local finders = require("telescope.finders")
-local conf = require("telescope.config").values
-
 local select = require("llmchat.select")
 local router = require("llmchat.router")
+local view = require("llmchat.view")
 
 
 Llmchat = function()
@@ -19,7 +15,8 @@ Llmchat = function()
     if result == nil then
         return
     end
-    print(result)
+    -- print(result)
+    view.view(result)
 end
 
 
