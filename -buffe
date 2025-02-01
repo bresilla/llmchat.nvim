@@ -1,7 +1,0 @@
-
-         
-
-         
-
-         
-{"error":{"message":"Exception: 1 validation error for OpenAIChatCompletionStreamOut\nchoices -> 0 -> delta\n  field required (type=value_error.missing)","code":502,"metadata":{"provider_name":"DeepInfra","raw":{"error_type":"unknown_error","error_message":"Exception: 1 validation error for OpenAIChatCompletionStreamOut\nchoices -> 0 -> delta\n  field required (type=value_error.missing)"}}},"user_id":"user_2s7pyuNJypziichGRpmyro5C6ia"}
