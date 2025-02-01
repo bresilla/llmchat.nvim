@@ -28,38 +28,41 @@ function M.get_visual_selection()
   return table.concat(lines, "\n")
 end
 
---- Sends the given prompt to the OpenRouter API and returns the result text.
---- Make sure you have your OPENROUTER_API_KEY environment variable set.
-function M.send_to_api(prompt)
+
+function M.cmd_string(prompt)
   local api_key = os.getenv("OPENROUTER_API_KEY")
   if not api_key then
     print("Error: OPENROUTER_API_KEY environment variable not set!")
     return nil
   end
-
-  -- Build the JSON payload. Adjust parameters as needed.
   local payload = vim.fn.json_encode({
-    model = "text-davinci-003",  -- Change model if desired.
+    model = "openai/gpt-3.5-turbo",
     prompt = prompt,
     max_tokens = 150,
     temperature = 0.7,
   })
-
-  -- Use OpenRouter's API endpoint.
-  local url = "https://openrouter.ai/api/v1/completions"
+  local url = "https://openrouter.ai/api/v1/chat/completions"
+  local escaped_payload = vim.fn.shellescape(payload)
   local cmd = string.format(
-    "curl -sS %s -H 'Content-Type: application/json' -H 'Authorization: Bearer %s' -d '%s'",
+    'curl --silent "%s" -H "Content-Type: application/json" -H "Authorization: Bearer %s" -d %s | awk "NF {p=1} p"',
     url,
     api_key,
-    payload
+    escaped_payload
   )
+  return cmd
+end
 
+function M.send_to_api(cmd)
   local result = vim.fn.system(cmd)
+  vim.wait(1000)
   if vim.v.shell_error ~= 0 then
     print("API call error: " .. result)
     return nil
   end
+  return result
+end
 
+function M.decode_json(result)
   local decoded = vim.fn.json_decode(result)
   if decoded and decoded.choices and decoded.choices[1] and decoded.choices[1].text then
     return decoded.choices[1].text
@@ -69,34 +72,22 @@ function M.send_to_api(prompt)
   end
 end
 
---- Main function: grabs the visual selection, sends it to the API,
---- and displays the response in a Telescope picker.
-function M.run_api_on_selection()
-  local prompt = M.get_visual_selection()
-  if not prompt or prompt == "" then
-    print("No text selected!")
-    return
-  end
-
-  local response = M.send_to_api(prompt)
-  if not response then
-    print("No response from API!")
-    return
-  end
-
-  -- Split the response into lines and display them using Telescope.
-  pickers.new({}, {
-    prompt_title = "API Response",
-    finder = finders.new_table {
-      results = vim.split(response, "\n"),
-    },
-    sorter = conf.generic_sorter({}),
-  }):find()
+Llmchat = function()
+    local prompt = M.get_visual_selection()
+    if prompt == nil then
+        return
+    end
+    local cmd = M.cmd_string(prompt)
+    local result = M.send_to_api(cmd)
+    if result == nil then
+        return
+    end
+    local table = M.decode_json(result)
+    if table == nil then
+        return
+    end
+    print(table)
 end
 
--- Dummy setup function to satisfy Lazy.nvim.
-function M.setup(opts)
-  -- Merge configuration options from opts if needed.
-end
 
 return M
