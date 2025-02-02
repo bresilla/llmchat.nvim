@@ -8,8 +8,8 @@ local function cmd_string(prompt)
   end
   local payload = vim.fn.json_encode({
     model = "openai/gpt-3.5-turbo",
-    prompt = prompt,
-    max_tokens = 150,
+    prompt = prompt .. "---- output in markdown",
+    max_tokens = 1000,
     temperature = 0.7,
   })
   local url = "https://openrouter.ai/api/v1/chat/completions"

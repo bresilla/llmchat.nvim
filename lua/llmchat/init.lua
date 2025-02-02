@@ -1,4 +1,3 @@
--- File: lua/my_telescope_plugin.lua
 local M = {}
 
 local select = require("llmchat.select")
@@ -15,8 +14,8 @@ Llmchat = function()
     if result == nil then
         return
     end
-    -- print(result)
-    view.view(result)
+
+    view.toggle_view({ result })
 end
 
 
