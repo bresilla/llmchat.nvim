@@ -48,10 +48,10 @@ function M.setup()
                 top_align = "left",
             },
         },
-        position = "50%",
+        position = "90%",  -- Position at bottom
         size = {
-            width = "80%",
-            height = "20%",
+            width = "70%",
+            height = "15%",
         },
     })
 
@@ -67,8 +67,8 @@ function M.setup()
         },
         position = "50%",
         size = {
-            width = "80%",
-            height = "30%",
+            width = "70%",
+            height = "75%",
         },
     })
 
@@ -82,9 +82,9 @@ function M.setup()
                 top_align = "left",
             },
         },
-        position = "90%",
+        position = "50%",
         size = {
-            width = "20%",
+            width = "30%",
             height = "90%",
         },
     })
@@ -93,16 +93,16 @@ function M.setup()
         {
             position = "50%",
             size = {
-                width = "100%",
+                width = "80%",  -- Make the entire layout take only 80% of the screen width
                 height = "90%",
             },
         },
         Layout.Box({
             Layout.Box({
+                Layout.Box(response_popup, { size = "80%" }),
                 Layout.Box(input_popup, { size = "20%" }),
-                Layout.Box(response_popup, { size = "30%" }),
-            }, { dir = "col", size = "80%" }),
-            Layout.Box(history_popup, { size = "20%" }),
+            }, { dir = "col", size = "70%" }),
+            Layout.Box(history_popup, { size = "30%" }),  -- Make history sidebar 30% wide
         }, { dir = "row" })
     )
 
