@@ -38,6 +38,11 @@ end
 local M = {}
 
 function M.setup()
+    -- Get telescope colors
+    local telescope_prompt = vim.api.nvim_get_hl_by_name("TelescopePromptBorder", true)
+    local telescope_results = vim.api.nvim_get_hl_by_name("TelescopeResultsBorder", true)
+    local telescope_preview = vim.api.nvim_get_hl_by_name("TelescopePreviewBorder", true)
+
     -- Create input popup
     local input_popup = Popup({
         enter = true,
@@ -52,6 +57,10 @@ function M.setup()
         size = {
             width = "70%",
             height = "15%",
+        },
+        highlight = "TelescopePromptBorder",
+        win_options = {
+            winhighlight = "Normal:TelescopePromptNormal,FloatBorder:TelescopePromptBorder",
         },
     })
 
@@ -164,5 +173,9 @@ function M.setup()
     response_popup:map("n", "q", close_all, { noremap = true })
     history_popup:map("n", "q", close_all, { noremap = true })
 end
+
+vim.api.nvim_create_user_command("Chat", function()
+    require("llmchat").setup()
+end, {})
 
 return M
