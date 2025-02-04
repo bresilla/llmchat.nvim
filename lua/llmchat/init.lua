@@ -8,29 +8,54 @@ local chat_history = {}
 
 -- Function to make API call to OpenRouter
 local function call_openrouter_api(prompt, callback)
-    local api_key = vim.env.OPENROUTER_API_KEY
-    -- You need to replace YOUR_API_KEY with your actual OpenRouter API key
-    local curl_command = string.format([[
-        curl -X POST https://openrouter.ai/api/v1/chat/completions \
-        -H "Content-Type: application/json" \
-        -H "Authorization: Bearer %s" \
-        -d '{
-            "model": "openai/gpt-3.5-turbo",
-            "messages": [{"role": "user", "content": "%s"}]
-        }'
-    ]], api_key, prompt)
+    local api_key = os.getenv("OPENROUTER_API_KEY")
+
+    if not api_key then
+        print("Error: OPENROUTER_API_KEY environment variable not set!")
+        return nil
+    end
+
+    local payload = vim.fn.json_encode({
+        model = "openai/gpt-3.5-turbo",
+        messages = {
+            {
+                role = "user",
+                content = prompt --.. " ---- output in markdown"
+            }
+        },
+        max_tokens = 1000,
+        temperature = 0.7,
+    })
+    local url = "https://openrouter.ai/api/v1/chat/completions"
+    local escaped_payload = vim.fn.shellescape(payload)
+
+    local curl_command = string.format(
+        'curl --silent "%s" -H "Content-Type: application/json" -H "Authorization: Bearer %s" -d %s',
+        url,
+        api_key,
+        escaped_payload
+    )
+
+    print(curl_command)
 
     vim.fn.jobstart(curl_command, {
         on_stdout = function(_, data)
             if data[1] ~= "" then
                 local success, result = pcall(vim.fn.json_decode, table.concat(data, "\n"))
-                if success and result.choices and result.choices[1] then
-                    callback(result.choices[1].message.content)
+                if success and result.choices and result.choices[1] and result.choices[1].message then
+                    local content = result.choices[1].message.content
+                    if content then
+                        local lines = vim.split(content, "\n", { plain = true })
+                        print(lines)
+                        callback(lines)
+                    end
                 end
             end
         end,
         on_stderr = function(_, data)
-            print("Error:", vim.inspect(data))
+            if data and #data > 0 and data[1] ~= "" then
+                print("Error:", vim.inspect(data))
+            end
         end,
     })
 end
@@ -38,11 +63,6 @@ end
 local M = {}
 
 function M.setup()
-    -- Get telescope colors
-    local telescope_prompt = vim.api.nvim_get_hl_by_name("TelescopePromptBorder", true)
-    local telescope_results = vim.api.nvim_get_hl_by_name("TelescopeResultsBorder", true)
-    local telescope_preview = vim.api.nvim_get_hl_by_name("TelescopePreviewBorder", true)
-
     -- Create input popup
     local input_popup = Popup({
         enter = true,
@@ -53,14 +73,14 @@ function M.setup()
                 top_align = "left",
             },
         },
-        position = "90%",  -- Position at bottom
+        position = "91%",  -- Position at bottom
         size = {
             width = "70%",
             height = "15%",
         },
-        highlight = "TelescopePromptBorder",
+        highlight = "TelescopeBorder",
         win_options = {
-            winhighlight = "Normal:TelescopePromptNormal,FloatBorder:TelescopePromptBorder",
+            winhighlight = "Normal:Normal,FloatBorder:TelescopeBorder",
         },
     })
 
@@ -79,22 +99,8 @@ function M.setup()
             width = "70%",
             height = "75%",
         },
-    })
-
-    -- Create history popup
-    local history_popup = Popup({
-        enter = false,
-        border = {
-            style = "rounded",
-            text = {
-                top = " History ",
-                top_align = "left",
-            },
-        },
-        position = "50%",
-        size = {
-            width = "30%",
-            height = "90%",
+        win_options = {
+            winhighlight = "Normal:Normal,FloatBorder:TelescopeBorder",
         },
     })
 
@@ -107,31 +113,13 @@ function M.setup()
             },
         },
         Layout.Box({
-            Layout.Box({
-                Layout.Box(response_popup, { size = "80%" }),
-                Layout.Box(input_popup, { size = "20%" }),
-            }, { dir = "col", size = "70%" }),
-            Layout.Box(history_popup, { size = "30%" }),  -- Make history sidebar 30% wide
-        }, { dir = "row" })
+            Layout.Box(response_popup, { size = "80%" }),
+            Layout.Box(input_popup, { size = "20%" }),
+        }, { dir = "col", size = "70%" })
     )
 
     -- Mount all popups
     layout:mount()
-
-    -- Setup input handling
-    local current_input = ""
-    local current_line = 0
-
-    -- Function to update history window
-    local function update_history()
-        local history_text = table.concat(
-            vim.tbl_map(function(item)
-                return string.format("User: %s\nAI: %s\n---", item.input, item.response)
-            end, chat_history),
-            "\n"
-        )
-        vim.api.nvim_buf_set_lines(history_popup.bufnr, 0, -1, false, vim.split(history_text, "\n"))
-    end
 
     -- Handle input buffer changes
     input_popup:on(event.BufEnter, function()
@@ -140,24 +128,20 @@ function M.setup()
 
     -- Setup keymaps for input window
     input_popup:map("n", "<CR>", function()
-        local input_text = vim.api.nvim_buf_get_lines(input_popup.bufnr, 0, -1, false)[1]
+        local lines = vim.api.nvim_buf_get_lines(input_popup.bufnr, 0, -1, false)
+        local input_text = table.concat(lines, "\n")
         if input_text and input_text ~= "" then
             -- Clear input buffer
             vim.api.nvim_buf_set_lines(input_popup.bufnr, 0, -1, false, {""})
-            
             -- Call API
             call_openrouter_api(input_text, function(response)
                 -- Update response window
-                vim.api.nvim_buf_set_lines(response_popup.bufnr, 0, -1, false, vim.split(response, "\n"))
-                
+                vim.api.nvim_buf_set_lines(response_popup.bufnr, 0, -1, false, response)
                 -- Add to history
                 table.insert(chat_history, {
                     input = input_text,
-                    response = response
+                    response = table.concat(response, "\n")
                 })
-                
-                -- Update history window
-                update_history()
             end)
         end
     end, { noremap = true })
@@ -166,16 +150,12 @@ function M.setup()
     local function close_all()
         input_popup:unmount()
         response_popup:unmount()
-        history_popup:unmount()
     end
 
-    input_popup:map("n", "q", close_all, { noremap = true })
-    response_popup:map("n", "q", close_all, { noremap = true })
-    history_popup:map("n", "q", close_all, { noremap = true })
+    input_popup:map("n", "<leader>c", close_all, { noremap = true })
+    response_popup:map("n", "<leader>c", close_all, { noremap = true })
 end
 
-vim.api.nvim_create_user_command("Chat", function()
-    require("llmchat").setup()
-end, {})
+vim.api.nvim_create_user_command("Chat", function() M.setup() end, {})
 
 return M
